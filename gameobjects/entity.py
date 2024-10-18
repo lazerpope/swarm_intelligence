@@ -18,6 +18,7 @@ class Point:
 
 
 class Entity(ABC):
+    size: int = 3
 
 
     def __init__(
@@ -25,18 +26,15 @@ class Entity(ABC):
         pos: Point,
         spd: float = 1.0,
         direction:float=0,
-        random_tick_spd_change: int = 1,
         random_tick_dir_change: int = 1,
         color: tuple[int, int, int] = (123, 123, 123),
-        size: int = 3,
     ):
         self.pos = pos
         self.spd = spd
         self.color = color
         self._direction = direction
-        self.random_tick_spd_change = random_tick_spd_change
         self.random_tick_dir_change = random_tick_dir_change
-        self.size = size
+        
 
     def update(self): ...
 

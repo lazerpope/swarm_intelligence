@@ -4,32 +4,35 @@ import pygame as pg
 import settings
 import math
 from typing import List
+import pygame.gfxdraw as gf
+
+
 class Bug(Entity):
-    line_length = 10
+    nose_length = settings.BUG_NOSE_LENGTH
+    max_spd:int = settings.BUG_MAX_SPEED
+    min_spd:int = settings.BUG_MIN_SPEED
+    size: int = settings.BUG_SIZE
     base_types: list = []
     bases: list = []
-    max_spd:int = 55
-    min_spd:int = 15
     
     def __init__(
         self,
         pos: Point | None = None,  # Ensure that the default is None
         spd: float = 1.0,
-        direction: float = 0,
-        dir_c:int = 0,
-        random_tick_spd_change: int = 1,
-        random_tick_dir_change: int = 100,
-        color: tuple[int, int, int] = (88, 88, 88),
-        counter:int = 10000 ,
-        size: int = 3,
-        scream_radius = 80
+        direction: float|None = None,
+        color: tuple[int, int, int] = (88, 88, 88),               
+        scream_radius = settings.BUG_SCREAM_RADIUS,
+        sway: float|None = None
     ):
         if pos is None:
             pos = Point(randint(10,settings.RESOLUTION_X-10),randint(10,settings.RESOLUTION_Y-10)) 
-        if direction == 0 :
+            
+        if direction is None :
             direction = randint(0,360)
-        self.sway = randint(-50,400)/600
-        self.dir_c = dir_c
+
+        self.sway = sway if sway is not None else randint(-50, 400) / 600
+
+        
         self.scream_radius = scream_radius
         
         if self.base_types.__len__() == 0:
@@ -37,7 +40,7 @@ class Bug(Entity):
         
         self.counters = {}
         for key in self.base_types:
-            self.counters[key] = counter
+            self.counters[key] = 10000
 
         self.target = choice(self.base_types)
         
@@ -45,10 +48,7 @@ class Bug(Entity):
             pos=pos,
             spd=spd,
             direction=direction,
-            random_tick_spd_change=random_tick_spd_change,
-            random_tick_dir_change=random_tick_dir_change,
             color=color,
-            size=size,
         )
 
         self.spd = randint(self.min_spd,self.max_spd)/10
@@ -85,17 +85,7 @@ class Bug(Entity):
             self.pos.y = settings.RESOLUTION_Y
             self.dir += 180
             
-        # self.acc += self.dir 
-        
-        # if self.dir_c <= 0 :
-        #     self.dir_c = 60
-        #     self.dir += randint(-self.random_tick_dir_change,self.random_tick_dir_change)/100
 
-        # if self.counters[self.target] > 300:   
-        #     self.dir_c -= 1
-
-        # f = randint(-self.random_tick_dir_change,self.random_tick_dir_change)/10000
-        # self.dir += f
         self.dir += self.sway
 
         
@@ -117,32 +107,71 @@ class Bug(Entity):
         # print(randint(-1,1))
 
 
-    
-    def scream(self, others: List['Bug'], screen: pg.Surface ):
+
+    def scream(self,chunks , screen:pg.Surface):
+        
+        x = int(self.pos.x / self.scream_radius)
+        y = int(self.pos.y / self.scream_radius)
+        if self.pos.x == settings.RESOLUTION_X:
+            x = int((self.pos.x-1) / self.scream_radius)
+        if self.pos.y == settings.RESOLUTION_Y:
+            y = int((self.pos.y-1) / self.scream_radius)
+
+
+        x_bound = math.ceil(settings.RESOLUTION_X/self.scream_radius)
+        y_bound = math.ceil(settings.RESOLUTION_Y/self.scream_radius)
+        
+        candidates = [(x-1,y+1),(x,y+1),(x+1,y+1),   (x-1,y-1),(x,y-1),(x+1,y-1),   (x-1,y),(x+1,y)]
+        
+        neighbours = [
+            (x_c, y_c) for x_c, y_c in candidates
+            if 0 <= x_c < x_bound and 0 <= y_c < y_bound
+        ]
+
+       
+        neighbouring_entities = [
+            ent for candidate in neighbours for ent in chunks[candidate[0]][candidate[1]]
+        ]
+
+        # print(neighbouring_entities.__len__())   
+        if len(neighbouring_entities) < 2:
+            return
         message = choice(self.base_types)
-        for other in others:
-            if self.pos.distance_to(other.pos) < self.scream_radius:
-                if self.counters[message]+self.scream_radius < other.counters[message]:
-                    other.counters[message] = self.counters[message] + self.scream_radius
-                    pg.draw.line(screen, (255,255,255), self.pos.as_tuple, other.pos.as_tuple, 1) 
-                    if message == other.target:
-                        other.dir = math.degrees(math.atan2(self.pos.y - other.pos.y, self.pos.x - other.pos.x))
+        for other in neighbouring_entities:
+            if other is self:
+                continue
+            if self.pos.distance_to(other.pos) >= self.scream_radius:
+                continue
+            if self.counters[message]+self.scream_radius >= other.counters[message]:
+                continue
+            other.counters[message] = self.counters[message] + self.scream_radius
+        
+            gf.line(screen,  int(self.pos.x), int(self.pos.y), int(other.pos.x), int(other.pos.y) , (200,240,240)) 
+
+            if message == other.target:
+                other.dir = math.degrees(math.atan2(self.pos.y - other.pos.y, self.pos.x - other.pos.x))
+
+
+
+
+
 
 
     def render(self, screen:pg.Surface): 
-        if self.target == "B":
-            pg.draw.circle(screen, (240,50,50), self.pos.as_tuple, self.size)
+        for base in self.bases:
+            if base.type == self.target:
+                color = base.color
+                break
         else:
-            pg.draw.circle(screen, (40,250,50), self.pos.as_tuple, self.size)
+            color = (255, 255, 255)
 
+        gf.circle(screen,  int(self.pos.x), int(self.pos.y) , self.size, color,)
+ 
         rad = math.radians(self.dir)
-        end_x = self.pos.x + self.line_length * math.cos(rad)
-        end_y = self.pos.y + self.line_length * math.sin(rad)
+        end_x = int(self.pos.x + self.nose_length * math.cos(rad))
+        end_y = int(self.pos.y + self.nose_length * math.sin(rad))
        
-        pg.draw.line(screen, self.color, self.pos.as_tuple, (end_x, end_y), 1) 
-
-
-
+        gf.line(screen,  int(self.pos.x), int(self.pos.y), end_x, end_y,  self.color) 
 
 
 
@@ -160,8 +189,6 @@ class Base(Entity):
         pos: Point | None = None,  # Ensure that the default is None
         spd: float = 1.0,
         direction: float = 0,
-        random_tick_spd_change: int = 1,
-        random_tick_dir_change: int = 1,
         color: tuple[int, int, int] = (123, 230, 123),        
         size: int = 40,
         type: str = ""
@@ -169,6 +196,9 @@ class Base(Entity):
         if pos is None:
             pos = Point()  # Create a new Point if pos is None
         
+        self.size = size
+
+
         self.type = type
         if type == '':
             raise ValueError('Base must have type')
@@ -176,11 +206,8 @@ class Base(Entity):
         super().__init__(
             pos=pos,
             spd=spd,
-            direction=direction,
-            random_tick_spd_change=random_tick_spd_change,
-            random_tick_dir_change=random_tick_dir_change,
+            direction=direction,            
             color=color,
-            size=size,
         )
         
 
