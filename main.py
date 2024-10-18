@@ -34,10 +34,10 @@ class App:
         self.entities = [Bug() for i in range(200)]
 
         #testing
-        self.entities[1].pos=Point(900, 500)
+        # self.entities[1].pos=Point(900, 500)
         self.entities[1].color = (255, 0, 0)
-        self.entities[1].dir = 0
-        self.entities[1].target = 'B'
+        # self.entities[1].dir = 0
+        # self.entities[1].target = 'B'
 
         # self.entities[0].pos=Point(900, 500)
         # self.entities[0].dir = 90
@@ -50,11 +50,22 @@ class App:
             entity.scream(self.entities, self.screen)
             entity.update()
 
-        pg.display.set_caption(f'Clock:[{self.clock.get_fps():.1f}] Traget:[{self.target_clock}]')
+
+        base_colors = set([base.type for base in self.bases])
+        ent_count_by_color = {}
+        for color in base_colors:
+            ent_count_by_color[color] = 0
+
+        for entity in self.entities:
+            ent_count_by_color[entity.target] += 1
+        s = ''
+        for color in ent_count_by_color.keys():
+            s+= f' {color}: {ent_count_by_color[color]}. '   
+        pg.display.set_caption(f'Clock:[{self.clock.get_fps():.1f}] Traget:[{self.target_clock}] Entities: {s}')
         
         
         #testing
-        print(self.entities[1].counters, self.entities[1].target)
+        # print(self.entities[1]._direction , self.entities[1].target)
         
 
     def render(self):
@@ -65,6 +76,7 @@ class App:
         for entity in self.bases:
             entity.render(self.screen)
 
+        self.entities[1].render(self.screen)
 
     def run(self):
         while self.running:

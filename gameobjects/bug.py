@@ -5,10 +5,10 @@ import settings
 import math
 from typing import List
 class Bug(Entity):
-    line_length = 7
+    line_length = 10
     base_types: list = []
     bases: list = []
-    max_spd:int = 35
+    max_spd:int = 55
     min_spd:int = 15
     
     def __init__(
@@ -18,17 +18,17 @@ class Bug(Entity):
         direction: float = 0,
         dir_c:int = 0,
         random_tick_spd_change: int = 1,
-        random_tick_dir_change: int = 2,
+        random_tick_dir_change: int = 100,
         color: tuple[int, int, int] = (88, 88, 88),
         counter:int = 10000 ,
         size: int = 3,
-        scream_radius = 70
+        scream_radius = 80
     ):
         if pos is None:
             pos = Point(randint(10,settings.RESOLUTION_X-10),randint(10,settings.RESOLUTION_Y-10)) 
         if direction == 0 :
             direction = randint(0,360)
-
+        self.sway = randint(-50,400)/600
         self.dir_c = dir_c
         self.scream_radius = scream_radius
         
@@ -85,16 +85,24 @@ class Bug(Entity):
             self.pos.y = settings.RESOLUTION_Y
             self.dir += 180
             
+        # self.acc += self.dir 
         
-        if self.dir_c <= 0 :
-            self.dir_c = 60
-            self.dir += randint(-self.random_tick_dir_change,self.random_tick_dir_change)
+        # if self.dir_c <= 0 :
+        #     self.dir_c = 60
+        #     self.dir += randint(-self.random_tick_dir_change,self.random_tick_dir_change)/100
 
-        if self.counters[self.target] > 1000:   
-            self.dir_c -= 1
+        # if self.counters[self.target] > 300:   
+        #     self.dir_c -= 1
+
+        # f = randint(-self.random_tick_dir_change,self.random_tick_dir_change)/10000
+        # self.dir += f
+        self.dir += self.sway
+
+        
 
         for base in self.bases:
-            if self.pos.distance_to(base.pos) < base.size * 0.8 and base.type == self.target :
+            dist = self.pos.distance_to(base.pos)
+            if dist < base.size * 0.9 and base.type == self.target :
                 
                 
                 other_bases = [i for i in self.base_types]
@@ -104,7 +112,7 @@ class Bug(Entity):
 
                 self.target = new_target
                 self.dir += 180
-                self.counters[base.type] = 0
+                self.counters[base.type] = dist
 
         # print(randint(-1,1))
 
@@ -122,7 +130,10 @@ class Bug(Entity):
 
 
     def render(self, screen:pg.Surface): 
-        pg.draw.circle(screen, self.color, (self.pos.x, self.pos.y), self.size)
+        if self.target == "B":
+            pg.draw.circle(screen, (240,50,50), self.pos.as_tuple, self.size)
+        else:
+            pg.draw.circle(screen, (40,250,50), self.pos.as_tuple, self.size)
 
         rad = math.radians(self.dir)
         end_x = self.pos.x + self.line_length * math.cos(rad)
